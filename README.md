@@ -242,3 +242,6 @@ If you misuse it, it will expose you.
 **Stay ethical. Stay sharp.**
 
 — CypherXblade
+
+**I build security-first systems that automate detection, simulation, and remediation across the SDLC.**
+
