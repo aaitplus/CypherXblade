@@ -1,4 +1,4 @@
-name: Python CI/CD
+name: Python CI/CD (Safe)
 
 on:
   push:
@@ -8,21 +8,21 @@ on:
 
 permissions:
   contents: read
-  packages: write  # For PyPI
-  id-token: write  # For token handling
+  packages: write
+  id-token: write
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11]
+        python-version: [3.9, 3.10, 3.11]  # ✅ Only valid Python versions
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python safely
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
@@ -30,29 +30,29 @@ jobs:
 
     - name: Install dependencies safely
       run: |
-        set -e  # Stop if any command fails
+        set -e  # Exit on any failure
         python -m pip install --upgrade pip || exit 1
         pip install flake8 pytest pytest-cov build twine || exit 1
         if [ -f requirements.txt ]; then
           pip install -r requirements.txt || exit 1
         fi
 
-    - name: Lint with flake8 safely
+    - name: Lint with flake8
       run: |
-        set +e  # Continue even if flake8 finds warnings
+        set +e  # Don't fail workflow on warnings
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
         flake8 . --count --max-complexity=10 --max-line-length=127 --statistics || true
 
     - name: Run tests with pytest safely
       run: |
         set -e
-        if [ -d "tests" ] || [ "$(ls -A tests 2>/dev/null)" ]; then
+        if [ -d "tests" ] && [ "$(ls -A tests 2>/dev/null)" ]; then
           pytest --cov=./ --cov-report=xml --cov-report=term || exit 1
         else
           echo "No tests found, skipping pytest"
         fi
 
-    - name: Upload coverage to Codecov (optional)
+    - name: Upload coverage to Codecov
       if: success()
       uses: codecov/codecov-action@v4
       with:
@@ -91,7 +91,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         set -e
-        if [ -f "dist/" ]; then
+        if [ -d "dist" ] && [ "$(ls -A dist 2>/dev/null)" ]; then
           python -m twine upload dist/* || exit 1
         else
           echo "No build artifacts found, skipping PyPI upload"
