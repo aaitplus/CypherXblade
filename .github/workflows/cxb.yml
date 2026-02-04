@@ -1,10 +1,10 @@
-name: Python CI/CD (Safe)
+name: Python CI/CD (Safe & Stable)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -16,48 +16,48 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11]  # ✅ Only valid Python versions
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]  # ✅ Stable, quoted versions
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python safely
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: pip
+      - name: Set up Python safely
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+          cache: pip
 
-    - name: Install dependencies safely
-      run: |
-        set -e  # Exit on any failure
-        python -m pip install --upgrade pip || exit 1
-        pip install flake8 pytest pytest-cov build twine || exit 1
-        if [ -f requirements.txt ]; then
-          pip install -r requirements.txt || exit 1
-        fi
+      - name: Install dependencies safely
+        run: |
+          set -e
+          python -m pip install --upgrade pip || exit 1
+          pip install flake8 pytest pytest-cov build twine || exit 1
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt || exit 1
+          fi
 
-    - name: Lint with flake8
-      run: |
-        set +e  # Don't fail workflow on warnings
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
-        flake8 . --count --max-complexity=10 --max-line-length=127 --statistics || true
+      - name: Lint with flake8
+        run: |
+          set +e  # Do not fail on warnings
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+          flake8 . --count --max-complexity=10 --max-line-length=127 --statistics || true
 
-    - name: Run tests with pytest safely
-      run: |
-        set -e
-        if [ -d "tests" ] && [ "$(ls -A tests 2>/dev/null)" ]; then
-          pytest --cov=./ --cov-report=xml --cov-report=term || exit 1
-        else
-          echo "No tests found, skipping pytest"
-        fi
+      - name: Run tests with pytest safely
+        run: |
+          set -e
+          if [ -d "tests" ] && [ "$(ls -A tests 2>/dev/null)" ]; then
+            pytest --cov=./ --cov-report=xml --cov-report=term || exit 1
+          else
+            echo "No tests found, skipping pytest"
+          fi
 
-    - name: Upload coverage to Codecov
-      if: success()
-      uses: codecov/codecov-action@v4
-      with:
-        files: ./coverage.xml
-        fail_ci_if_error: false
+      - name: Upload coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
 
   deploy:
     needs: build-and-test
@@ -65,34 +65,34 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python for deploy
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.10
-        cache: pip
+      - name: Set up Python for deploy
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"  # ✅ Stable deployment Python
+          cache: pip
 
-    - name: Install build tools safely
-      run: |
-        set -e
-        python -m pip install --upgrade pip || exit 1
-        pip install build twine || exit 1
+      - name: Install build tools safely
+        run: |
+          set -e
+          python -m pip install --upgrade pip || exit 1
+          pip install build twine || exit 1
 
-    - name: Build package safely
-      run: |
-        set -e
-        python -m build || exit 1
+      - name: Build package safely
+        run: |
+          set -e
+          python -m build || exit 1
 
-    - name: Publish to PyPI safely
-      if: success()
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: |
-        set -e
-        if [ -d "dist" ] && [ "$(ls -A dist 2>/dev/null)" ]; then
-          python -m twine upload dist/* || exit 1
-        else
-          echo "No build artifacts found, skipping PyPI upload"
-        fi
+      - name: Publish to PyPI safely
+        if: success()
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          set -e
+          if [ -d "dist" ] && [ "$(ls -A dist 2>/dev/null)" ]; then
+            python -m twine upload dist/* || exit 1
+          else
+            echo "No build artifacts found, skipping PyPI upload"
+          fi
